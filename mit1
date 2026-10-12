@@ -1,0 +1,92 @@
+import numpy as np
+import skfuzzy as fuzz
+import matplotlib.pyplot as plt
+def plotfunction(x, functions, labels, title, colors):
+plt.figure()
+for y, label, color in zip(functions, labels, colors):
+plt.plot(x, y, color=color, label=label)
+plt.title(title)
+plt.legend()
+plt.show()
+
+def triangular(x, a, b, c):
+return fuzz.trimf(x, [a, b, c])
+def trapezoidal(x, a, b, c, d):
+return fuzz.trapmf(x, [a, b, c, d])
+def gaussian(x, mean, sigma):
+return fuzz.gaussmf(x, mean, sigma)
+def gaussian2(x, mean1, sigma1, mean2, sigma2):
+return fuzz.gauss2mf(x, mean1, sigma1, mean2, sigma2)
+def generalizedbell(x, a, b, c):
+return fuzz.gbellmf(x, a, b, c)
+def sigmoid(x, b, c):
+return fuzz.sigmf(x, b, c)
+def dsigmoid(x, b1, c1, b2, c2):
+return fuzz.dsigmf(x, b1, c1, b2, c2)
+def psigmoid(x, b1, c1, b2, c2):
+return fuzz.psigmf(x, b1, c1, b2, c2)
+def polynomial(x):
+z = fuzz.zmf(x, 2, 5)
+pi = fuzz.pimf(x, 3, 5, 7, 9)
+s = fuzz.smf(x, 5, 8)
+return z, pi, s
+def minmaxinterpretation(f1, f2):
+minintersection = np.minimum(f1, f2)
+maxunion = np.maximum(f1, f2)
+return minintersection, maxunion
+def probabilisticinterpretation(f1, f2):
+conjunction = np.multiply(f1, f2)
+disjunction = f1 + f2 - conjunction
+return conjunction, disjunction
+def complement(A):
+return 1 - A
+# Main execution
+x = np.arange(0, 10, 0.1)
+# Трикутна і трапецієподібна функції приналежності з новими параметрами
+trimf = triangular(x, 2, 6, 8)
+trapmf = trapezoidal(x, 3, 6, 8, 9)
+plotfunction(x, [trimf], ["Трикутна ФП"], "Трикутна функція приналежності", ['green'])
+plotfunction(x, [trapmf], ["Трапецієподібна ФП"], "Трапецієподібна функція приналежності",
+['green'])
+# Функції Гаусса з новими параметрами
+gaussmf = gaussian(x, 6, 2)
+gauss2mf = gaussian2(x, 4, 1.5, 6, 2)
+plotfunction(x, [gaussmf], ["Проста ФП Гаусса"], "Гауссова функція приналежності", ['green'])
+plotfunction(x, [gauss2mf], ["Двостороння ФП Гаусса"], "Двостороння функція приналежності
+Гаусса", ['green'])
+
+# Узагальнений дзвін з новими параметрами
+gbellmf = generalizedbell(x, 2, 4, 7)
+plotfunction(x, [gbellmf], ["ФП 'Узагальнений дзвін'"], "Функція приналежності 'Узагальнений
+дзвін'", ['green'])
+# Сігмоїдальні функції з новими параметрами
+sigmf = sigmoid(x, 4, -4)
+dsigmf = dsigmoid(x, 2, 4, 6, 8)
+psigmf = psigmoid(x, 3, 6, 5, 9)
+plotfunction(x, [sigmf], ["Одностороння сигмоїдна ФП"], "Одностороння сигмоїдна функція",
+['green'])
+plotfunction(x, [dsigmf], ["Двостороння сигмоїдна ФП"], "Двостороння сигмоїдна функція",
+['green'])
+plotfunction(x, [psigmf], ["Несиметрична сигмоїдна ФП"], "Несиметрична сигмоїдна функція",
+['green'])
+# Поліноміальні функції з новими параметрами
+zmf, pimf, smf = polynomial(x)
+plotfunction(x, [zmf, pimf, smf], ["Z-функція", "PI-функція", "S-функція"], "Поліноміальні
+функції приналежності", ['blue', 'purple', 'green'])
+# Мінімаксна інтерпретація
+f1 = gaussian(x, 3, 2)
+f2 = gaussian(x, 7, 2)
+mininter, maxunion = minmaxinterpretation(f1, f2)
+plotfunction(x, [f1, f2, mininter], ["F1", "F2", "Перетин"], "Перетин нечітких множин (Мінімум)",
+['blue', 'purple', 'green'])
+plotfunction(x, [f1, f2, maxunion], ["F1", "F2", "Об'єднання"], "Об'єднання нечітких множин
+(Максимум)", ['blue', 'purple', 'green'])
+# Вірогіднісна інтерпретація
+conj, disj = probabilisticinterpretation(f1, f2)
+plotfunction(x, [f1, f2, conj], ["F1", "F2", "Кон'юнкція"], "Кон'юнкція", ['blue', 'purple', 'green'])
+plotfunction(x, [f1, f2, disj], ["F1", "F2", "Диз'юнкція"], "Диз'юнкція", ['blue', 'purple', 'green'])
+# Доповнення нечіткої множини
+A = gaussian(x, 4, 3)
+notA = complement(A)
+plotfunction(x, [A, notA], ["Множина A", "Доповнення A"], "Доповнення множини A", ['blue',
+'green'])
