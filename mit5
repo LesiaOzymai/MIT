@@ -1,0 +1,105 @@
+import numpy as np
+
+# Define letter patterns as 5x5 grids
+LETTERS = {
+"O": [
+[1, 1, 1, 1, 1],
+[1, -1, -1, -1, 1],
+[1, -1, -1, -1, 1],
+[1, -1, -1, -1, 1],
+[1, 1, 1, 1, 1],
+],
+"Z": [
+[1, 1, 1, 1, 1],
+[-1, -1, -1, 1, -1],
+
+[-1, -1, 1, -1, -1],
+[-1, 1, -1, -1, -1],
+[1, 1, 1, 1, 1],
+],
+"Y": [
+[1, -1, -1, -1, 1],
+[-1, 1, -1, 1, -1],
+[-1, -1, 1, -1, -1],
+[-1, -1, 1, -1, -1],
+[-1, -1, 1, -1, -1],
+],
+"M": [
+[1, -1, -1, -1, 1],
+[1, 1, -1, 1, 1],
+[1, -1, 1, -1, 1],
+[1, -1, -1, -1, 1],
+[1, -1, -1, -1, 1],
+],
+}
+
+# Convert letter grids to vectors
+def grid_to_vector(grid):
+"""Flatten a 2D grid into a 1D vector."""
+return np.array(grid).flatten()
+
+def prepare_patterns(letters):
+"""Convert letter grids to pattern vectors."""
+return {letter: grid_to_vector(grid) for letter, grid in
+letters.items()}
+
+# Train Hebbian Network
+def hebbian_training(patterns):
+"""Train Hebbian network by computing the weight matrix."""
+size = len(next(iter(patterns.values())))
+weights = np.zeros((size, size))
+for pattern in patterns.values():
+weights += np.outer(pattern, pattern) # Hebbian learning rule
+np.fill_diagonal(weights, 0) # Prevent self-connections
+return weights
+
+# Recognize letters using trained network
+def recognize(weights, pattern):
+"""Recognize a pattern using the network's weights."""
+output = np.dot(weights, pattern)
+return np.sign(output)
+
+# Add noise to a pattern
+def add_noise(pattern, noise_level=5):
+"""Introduce noise by flipping 'noise_level' random bits."""
+noisy_pattern = pattern.copy()
+indices = np.random.choice(len(pattern), size=noise_level,
+replace=False)
+noisy_pattern[indices] *= -1
+return noisy_pattern
+
+# Test the network
+def test_network(weights, patterns, noisy=False, noise_level=5):
+"""Test the network's recognition accuracy."""
+
+for letter, pattern in patterns.items():
+original_pattern = pattern
+if noisy:
+pattern = add_noise(pattern, noise_level)
+print(f"Testing noisy input for letter '{letter}':")
+else:
+print(f"Testing clean input for letter '{letter}':")
+
+recognized = recognize(weights, pattern)
+match = np.array_equal(recognized, original_pattern)
+match_status = "MATCH" if match else "NO MATCH"
+
+print(f"Recognized Output:\n{recognized.reshape(5, 5)}")
+print(f"Is recognized output identical to original? {match_status}
+\n")
+
+# Main Execution
+if __name__ == "__main__":
+# Prepare letter patterns
+patterns = prepare_patterns(LETTERS)
+
+# Train the network
+weights = hebbian_training(patterns)
+
+# Test with clean inputs
+print("=== Testing Clean Inputs ===")
+test_network(weights, patterns, noisy=False)
+
+# Test with noisy inputs
+print("=== Testing Noisy Inputs ===")
+test_network(weights, patterns, noisy=True, noise_level=2)
