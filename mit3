@@ -1,0 +1,52 @@
+import numpy as np
+import matplotlib.pyplot as plt
+import skfuzzy as fuzz
+
+np.random.seed(145)
+total_users = 500
+clusters_data = []
+for _ in range(3):
+visits = np.random.normal(loc=np.random.uniform(50, 450),
+scale=np.random.uniform(20, 80), size=int(total_users / 3))
+time_spent = np.random.normal(loc=np.random.uniform(50, 450),
+scale=np.random.uniform(20, 80), size=int(total_users / 3))
+clusters_data.append(np.column_stack((visits, time_spent)))
+user_data = np.vstack(clusters_data)
+
+noise_visits = np.random.uniform(0,500, size=int(total_users / 10))
+noise_time_spent = np.random.uniform(0, 500, size=int(total_users / 10))
+noise_data = np.column_stack((noise_visits, noise_time_spent))
+user_data = np.vstack((user_data, noise_data))
+user_data = user_data[(user_data[:, 0] > 0) & (user_data[:, 1] > 0)]
+plt.scatter(user_data[:, 0], user_data[:, 1], c='green', alpha=0.5)
+plt.title("Поведінкові дані користувачів")
+plt.xlabel("Характеристика 1")
+plt.ylabel("Характеристика 2")
+plt.show()
+cluster_num = 4
+centers, u_matrix, _, _, _, _, fpc = fuzz.cluster.cmeans(user_data.T,
+cluster_num, 2, error=0.005, maxiter=1000, init=None)
+user_clusters = np.argmax(u_matrix, axis=0)
+plt.scatter(user_data[:, 0], user_data[:, 1], c=user_clusters,
+cmap='summer', alpha=0.5)
+plt.scatter(centers[:, 0], centers[:, 1], marker='x', c='red', s=200)
+plt.title("Результат FuzzyClassifierMeans кластеризації")
+plt.xlabel("Характеристика 1")
+plt.ylabel("Характеристика 2")
+plt.show()
+print("Координати центрів кластерів:")
+print(centers)
+split_coefficients = []
+cluster_count_range = range(2, 10)
+for cluster_count in cluster_count_range:
+cntrs, u_m, _, _, _, _, fpc_value = fuzz.cluster.cmeans(user_data.T,
+cluster_count, 2, error=0.005, maxiter=1000, init=None)
+split_coefficients.append(fpc_value)
+print(f"Кількість кластерів: {cluster_count}, Коефіцієнт розбиття:
+{round(fpc_value, 4)}")
+
+plt.plot(cluster_count_range, split_coefficients, color='green')
+plt.title("Графік зміни значень цільової функції")
+plt.xlabel("Номер ітерації")
+plt.ylabel("Значення цільвої функції")
+plt.show()
