@@ -1,0 +1,208 @@
+import itertools as it
+import numpy as np
+import matplotlib.pyplot as plt
+import matplotlib.patches as patches
+
+# Parameters for the genetic algorithm
+population_size = 10
+length_weight = 0.1
+n_epochs = 50
+n_cross = 30
+mutation_rate = 0.3
+w = 14.0
+h = 14.0
+
+connections = (
+(3, 5),
+(4, 5),
+(1, 5, 6),
+(2,),
+
+(1, 2, 3),
+(3, 4),
+(5, 8),
+(6, 7))
+
+shapes = np.array([
+(6, 4),
+(4, 3),
+(3, 3),
+(6, 6),
+(7, 4),
+(4, 2),
+(5, 5),
+(3, 4)
+], dtype=np.float32)
+
+n_dim = 2
+n_gens = len(connections)
+
+# Utility functions
+def distance(gene1, gene2):
+return np.sqrt(np.sum((gene1 - gene2) ** 2))
+
+def overlap_space(r1, r2):
+c1, s1 = r1[:n_dim], r1[n_dim:]
+c2, s2 = r2[:n_dim], r2[n_dim:]
+center_diffs = np.abs(c1 - c2)
+max_diffs = (s1 + s2) / 2
+ds = max_diffs - center_diffs
+ds[ds < 0] = 0
+return np.prod(ds)
+
+def score_length(chromosome, normalized=True):
+length = 0
+for i in range(len(connections)):
+i_c = chromosome[i]
+neigs_cs = chromosome[np.array(connections[i]) - 1]
+length += np.sum(np.apply_along_axis(
+lambda n_c: distance(n_c, i_c),
+-1, neigs_cs
+))
+if normalized:
+return length / (n_gens ** 2 * np.sqrt(w ** 2 + h ** 2))
+return length
+
+def score_penalty(chromosome, normalized=True):
+pairs_indices = np.array(tuple(it.combinations(range(n_gens), 2)))
+pairs = chromosome[pairs_indices, :]
+pairs_with_shapes = np.concatenate((pairs, shapes[pairs_indices]),
+axis=-1)
+overlap = 0
+for i in range(len(pairs)):
+rect1, rect2 = pairs_with_shapes[i, ...]
+overlap += overlap_space(rect1, rect2)
+if normalized:
+return overlap / (n_gens * w * h)
+return overlap
+
+def fitness(chromosome):
+return length_weight * score_length(chromosome) +
+score_penalty(chromosome)
+
+def crossover(parent1, parent2):
+
+mid = n_gens // 2
+if (np.random.rand() < 0.5):
+return np.concatenate([parent1[:mid], parent2[mid:]])
+return np.concatenate([parent2[:mid], parent1[mid:]])
+
+def mutate(chromosome):
+rand_gen_index = np.random.randint(0, n_gens)
+best_rand = chromosome[rand_gen_index]
+min_penalty = score_penalty(chromosome)
+for _ in range(10):
+rand_gen = gen_from_koefs(np.random.rand(2), rand_gen_index)
+chromosome[rand_gen_index] = rand_gen
+if score_penalty(chromosome) < min_penalty:
+min_penalty = score_penalty(chromosome)
+best_rand = rand_gen
+chromosome[rand_gen_index] = best_rand
+return chromosome
+
+def gen_from_koefs(koefs, gen_index):
+gw, gh = shapes[gen_index]
+max_lims = np.array((w - gw/2, h - gh/2))
+min_lims = np.array((gw/2, gh/2))
+return min_lims + koefs * (max_lims - min_lims)
+
+# Genetic Algorithm
+def genetic_algorithm():
+initial_population = np.zeros((population_size, n_gens, 2))
+for ci in range(population_size):
+for gi in range(n_gens):
+initial_population[ci, gi] = gen_from_koefs(np.random.ranf(2),
+gi)
+
+pop = np.array(np.concatenate((
+initial_population,
+np.reshape(np.repeat(np.nan, n_cross * n_gens * n_dim), (n_cross,
+n_gens, n_dim))
+)))
+
+pop_fit = np.full((pop.shape[0],), np.infty)
+for i in range(pop.shape[0]):
+chromosome = pop[i]
+pop_fit[i] = fitness(chromosome)
+pop = pop[np.argsort(pop_fit)]
+epoch = 0
+
+print(f"Epoch {epoch}: best fitness={fitness(pop[0])}")
+
+while score_penalty(pop[0]) != 0 and epoch < n_epochs:
+# Selection
+parents = np.array(list(it.islice(
+it.combinations(
+pop[np.where(~np.isnan(pop[:, 0, 0]))],
+2),
+n_cross
+)))
+
+# Crossover
+children = []
+for i in range(parents.shape[0]):
+children.append(crossover(*parents[i, :, :]))
+pop[-n_cross:] = children
+
+# Mutation
+for i in range(pop.shape[0]):
+chromosome = pop[i]
+if np.random.rand() > mutation_rate:
+continue
+pop[i] = mutate(chromosome)
+
+# Recalculate fitness
+pop_fit = np.full((pop.shape[0],), np.inf)
+for i in range(pop.shape[0]):
+chromosome = pop[i]
+pop_fit[i] = fitness(chromosome)
+pop = pop[np.argsort(pop_fit)]
+pop[-n_cross:] = np.nan
+epoch += 1
+
+print(f"Epoch {epoch}: best fitness={fitness(pop[0])},
+s={score_length(pop[0])}")
+
+return pop[0]
+
+# Visualization
+def draw_comparisons(solutions):
+fig, axes = plt.subplots(1, 3, figsize=(18, 6))
+
+for idx, (solution, ax) in enumerate(zip(solutions, axes)):
+# Draw main rectangle
+main_rect = patches.Rectangle((0, 0), w, h, edgecolor='black',
+facecolor='white')
+ax.add_patch(main_rect)
+
+# Draw each rectangle
+
+for i in range(n_gens):
+cx, cy = solution[i]
+rw, rh = shapes[i]
+bottom_left = (cx - rw / 2, cy - rh / 2)
+rect = patches.Rectangle(bottom_left, rw, rh, edgecolor='red',
+facecolor='lightpink')
+ax.add_patch(rect)
+ax.text(*bottom_left, f'{i + 1}', color='black', fontsize=12)
+
+total_length = score_length(solution, False)
+total_overlap = score_penalty(solution, False)
+ax.set_xlim(-1, w + 1)
+ax.set_ylim(-1, h + 1)
+ax.set_aspect('equal', adjustable='box')
+ax.set_title(f"Solution {idx + 1}\nLength: {total_length:.2f},
+Overlap: {total_overlap:.2f}", fontsize=12)
+
+plt.tight_layout()
+plt.show()
+
+# Print centers for all solutions
+for idx, solution in enumerate(solutions):
+print(f"\nCenters of rectangles for solution {idx + 1}:")
+for i, (cx, cy) in enumerate(solution):
+print(f"Rectangle {i + 1}: center = ({cx:.2f}, {cy:.2f})")
+
+# Run the algorithm
+solutions = [genetic_algorithm() for _ in range(3)]
+draw_comparisons(solutions)
